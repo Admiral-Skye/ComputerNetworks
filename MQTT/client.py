@@ -74,7 +74,7 @@ rcval = {
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
-    print(rcval[rc]) # print the result of the connection attempt
+    print("[DEBUG] %s" % rcval[rc]) # print the result of the connection attempt
 
     if (rc == 0):
         # Subscribing in on_connect() means that if we lose the connection and
@@ -93,9 +93,9 @@ def on_message(client, userdata, msg):
     payload = str(msg.payload)
     #print(msg.topic+" : " + payload)
 
-    if (payload[2:-1] != "close"): 
-        # there seems to be random messages starting as "close"
+    try:
         number = int(payload[2:-1])
+
         QoS = int(msg.topic[len(msg.topic)-1:])
         
         dataSet = data[QoS]
@@ -126,6 +126,8 @@ def on_message(client, userdata, msg):
             dataSet["received"].append(number)
         
         data[QoS] = dataSet
+    except ValueError:
+        print("[WARN]  Unexpected string: '%s'" % payload)
 
 # Initiate client with correct ID
 client = mqtt.Client("3310-u5561028")
@@ -161,7 +163,7 @@ client.on_message = on_message
 client.connect("3310exp.hopto.org", port=1883, keepalive=60)
 
 init = time.time()
-print("executing")
+print("[INFO]  executing")
 for iter in range(1, 11):
     # Collect data every minute for 10 minutes.
 
@@ -169,7 +171,7 @@ for iter in range(1, 11):
     end = time.time()
     start = time.time()
 
-    print("starting set #" + str(iter))
+    print("[DEBUG] starting set #" + str(iter))
     while (end - start < 60): 
         # Wait 60 seconds before collating data
         end = time.time()
@@ -201,12 +203,12 @@ for iter in range(1, 11):
         data[id]["missing"] = []
         data[id]["received"] = []
 
-print("unsubscribing")
+print("[INFO]  unsubscribing")
 client.unsubscribe("counter/fast/q0")
 client.unsubscribe("counter/fast/q1")
 client.unsubscribe("counter/fast/q2")
 
-print("publishing Results")
+print("[INFO]  publishing Results")
 baseTopic = "studentreport/u5561028/"
 timestampTopic = "studentreport/u5561028/timestamp"
 
@@ -215,23 +217,23 @@ client.publish(baseTopic + "language", payload="python", qos=2, retain=True).wai
 client.publish(timestampTopic, payload=int(init), qos=2, retain=True).wait_for_publish()
 # Results calculated over 1 minute interval, 
 for id in (0, 1, 2):
-    print("Results for QoS " + str(id))
+    print("[INFO]  Results for QoS " + str(id))
     # Best receive rate over 1 min
     response = client.publish(timestampTopic + "/"+str(id)+"/recv", payload=data[id]["recv"], qos=2, retain=True)
     response.wait_for_publish()
-    print("recv: "+str(data[id]["recv"]))
+    print("[INFO]   recv: "+str(data[id]["recv"]))
     # Worst loss rate over 1 min
     response = client.publish(timestampTopic + "/"+str(id)+"/loss", payload=data[id]["loss"], qos=2, retain=True)
     response.wait_for_publish()
-    print(" loss: "+str(data[id]["loss"]))
+    print("[INFO]   loss: "+str(data[id]["loss"]))
     # Worst dupe rate over 1 min
     response = client.publish(timestampTopic + "/"+str(id)+"/dupe", payload=data[id]["dupe"], qos=2, retain=True)
     response.wait_for_publish()
-    print(" dupe: "+str(data[id]["dupe"]))
+    print("[INFO]   dupe: "+str(data[id]["dupe"]))
     # Worst Out of order rate over 1 min
     response = client.publish(timestampTopic + "/"+str(id)+"/ooo", payload=data[id]["ooo"], qos=2, retain=True)
     response.wait_for_publish()
-    print("  ooo: "+str(data[id]["ooo"]))
+    print("[INFO]    ooo: "+str(data[id]["ooo"]))
 
 client.loop_stop()
 
