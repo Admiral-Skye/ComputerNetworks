@@ -114,8 +114,10 @@ def on_message(client, userdata, msg):
         elif (dataSet["latest"] < number):
             # Skipping vals, we missed some messages
             for num in range(dataSet["latest"]+1, number):
-                # Interpolate missing messages.
-                dataSet["missing"].append(num)
+                # Interpolate missing messages. Check if they have already been received.
+                if (number not in dataSet["received"]): 
+                    # Haven't received the message yet, add it to the list of messages we are waiting for
+                    dataSet["missing"].append(num)
 
             dataSet["latest"] = number
         
@@ -162,7 +164,7 @@ client.on_message = on_message
 
 client.connect("3310exp.hopto.org", port=1883, keepalive=60)
 
-init = time.time()
+init = int(time.time())
 print("[INFO]  executing")
 for iter in range(1, 11):
     # Collect data every minute for 10 minutes.
@@ -210,33 +212,28 @@ client.unsubscribe("counter/fast/q2")
 
 print("[INFO]  publishing Results")
 baseTopic = "studentreport/u5561028/"
-timestampTopic = "studentreport/u5561028/timestamp"
 
 client.loop_start()
 client.publish(baseTopic + "language", payload="python", qos=2, retain=True).wait_for_publish()
-client.publish(timestampTopic, payload=int(init), qos=2, retain=True).wait_for_publish()
+client.publish(baseTopic + "timestamp", payload=init, qos=2, retain=True).wait_for_publish()
 # Results calculated over 1 minute interval, 
 for id in (0, 1, 2):
     print("[INFO]  Results for QoS " + str(id))
     # Best receive rate over 1 min
-    response = client.publish(timestampTopic + "/"+str(id)+"/recv", payload=data[id]["recv"], qos=2, retain=True)
-    response.wait_for_publish()
+    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/recv", payload=data[id]["recv"], qos=2, retain=True).wait_for_publish()
     print("[INFO]   recv: "+str(data[id]["recv"]))
     # Worst loss rate over 1 min
-    response = client.publish(timestampTopic + "/"+str(id)+"/loss", payload=data[id]["loss"], qos=2, retain=True)
-    response.wait_for_publish()
+    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/loss", payload=data[id]["loss"], qos=2, retain=True).wait_for_publish()
     print("[INFO]   loss: "+str(data[id]["loss"]))
     # Worst dupe rate over 1 min
-    response = client.publish(timestampTopic + "/"+str(id)+"/dupe", payload=data[id]["dupe"], qos=2, retain=True)
-    response.wait_for_publish()
+    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/dupe", payload=data[id]["dupe"], qos=2, retain=True).wait_for_publish()
     print("[INFO]   dupe: "+str(data[id]["dupe"]))
     # Worst Out of order rate over 1 min
-    response = client.publish(timestampTopic + "/"+str(id)+"/ooo", payload=data[id]["ooo"], qos=2, retain=True)
-    response.wait_for_publish()
+    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/ooo", payload=data[id]["ooo"], qos=2, retain=True).wait_for_publish()
     print("[INFO]    ooo: "+str(data[id]["ooo"]))
 
 client.loop_stop()
 
-print("done")
+print("[DEBUG] done")
 
 client.disconnect()
