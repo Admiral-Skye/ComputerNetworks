@@ -1,6 +1,9 @@
+# This file subscribes to studentreport/# 
+# and attempts to parse the results and provides averages, min and max values
+#
+# Written by Sebastian Van Den Dungen. u5561028
+
 import paho.mqtt.client as mqtt
-#import paho.mqtt.publish as pub
-#import paho.mqtt.subscribe as sub
 import sys
 import time
 
@@ -82,11 +85,12 @@ def on_connect(client, userdata, flags, rc):
 
         #Subscribe to topics here.
         #Subscribe all at once and sort it out as the messages come in
+        print("[DEBUG] subscribing")
         client.subscribe("counter/fast/q0", 0)
         client.subscribe("counter/fast/q1", 1)
         client.subscribe("counter/fast/q2", 2)
     else:
-        print("not subbing")
+        print("[FATAL] Did not connect, cannot subscribe")
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
@@ -165,7 +169,7 @@ client.on_message = on_message
 client.connect("3310exp.hopto.org", port=1883, keepalive=60)
 
 init = int(time.time())
-print("[INFO]  executing")
+print("[DEBUG] executing")
 for iter in range(1, 11):
     # Collect data every minute for 10 minutes.
 
@@ -205,7 +209,7 @@ for iter in range(1, 11):
         data[id]["missing"] = []
         data[id]["received"] = []
 
-print("[INFO]  unsubscribing")
+print("[DEBUG] unsubscribing")
 client.unsubscribe("counter/fast/q0")
 client.unsubscribe("counter/fast/q1")
 client.unsubscribe("counter/fast/q2")
@@ -220,16 +224,16 @@ client.publish(baseTopic + "timestamp", payload=init, qos=2, retain=True).wait_f
 for id in (0, 1, 2):
     print("[INFO]  Results for QoS " + str(id))
     # Best receive rate over 1 min
-    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/recv", payload=data[id]["recv"], qos=2, retain=True).wait_for_publish()
+    client.publish(baseTopic + str(init) + "/"+str(id)+"/recv", payload=data[id]["recv"], qos=2, retain=True).wait_for_publish()
     print("[INFO]   recv: "+str(data[id]["recv"]))
     # Worst loss rate over 1 min
-    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/loss", payload=data[id]["loss"], qos=2, retain=True).wait_for_publish()
+    client.publish(baseTopic + str(init) + "/"+str(id)+"/loss", payload=data[id]["loss"], qos=2, retain=True).wait_for_publish()
     print("[INFO]   loss: "+str(data[id]["loss"]))
     # Worst dupe rate over 1 min
-    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/dupe", payload=data[id]["dupe"], qos=2, retain=True).wait_for_publish()
+    client.publish(baseTopic + str(init) + "/"+str(id)+"/dupe", payload=data[id]["dupe"], qos=2, retain=True).wait_for_publish()
     print("[INFO]   dupe: "+str(data[id]["dupe"]))
     # Worst Out of order rate over 1 min
-    client.publish(baseTopic + "/" + str(init) + "/"+str(id)+"/ooo", payload=data[id]["ooo"], qos=2, retain=True).wait_for_publish()
+    client.publish(baseTopic + str(init) + "/"+str(id)+"/ooo", payload=data[id]["ooo"], qos=2, retain=True).wait_for_publish()
     print("[INFO]    ooo: "+str(data[id]["ooo"]))
 
 client.loop_stop()
