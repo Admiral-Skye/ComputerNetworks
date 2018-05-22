@@ -1,6 +1,6 @@
 import paho.mqtt.client as mqtt
-import paho.mqtt.publish as pub
-import paho.mqtt.subscribe as sub
+#import paho.mqtt.publish as pub
+#import paho.mqtt.subscribe as sub
 import sys
 import time
 
